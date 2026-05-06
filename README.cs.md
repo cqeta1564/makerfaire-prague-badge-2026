@@ -137,6 +137,16 @@ Pokud je `pio` dostupné v `PATH`, jde použít i krátká varianta:
 pio run -e maker_badge_esp32s2
 ```
 
+## Nahrání z prohlížeče
+
+Release firmware jde nahrát přes GitHub Pages web flasher:
+
+[Nahrát z prohlížeče](https://cqeta1564.github.io/makerfaire-prague-badge-2026/)
+
+Použij desktopový Chrome nebo Microsoft Edge, připoj badge přes USB-C a zapni
+ji. Pokud se sériový port neukáže, uveď ESP32-S2 do bootloader režimu a zkus to
+znovu. Web flasher používá release build `maker_badge_esp32s2`.
+
 ## Upload
 
 Připoj badge přes USB-C, zapni ji a spusť:

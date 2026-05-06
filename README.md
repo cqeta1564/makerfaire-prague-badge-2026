@@ -136,6 +136,16 @@ If `pio` is available on `PATH`, the equivalent command is:
 pio run -e maker_badge_esp32s2
 ```
 
+## Flash From Browser
+
+Release firmware can be installed from the GitHub Pages web flasher:
+
+[Flash from browser](https://cqeta1564.github.io/makerfaire-prague-badge-2026/)
+
+Use desktop Chrome or Microsoft Edge, connect the badge over USB-C, and turn it
+on. If the serial port does not appear, put the ESP32-S2 into bootloader mode
+and try again. The web flasher uses the `maker_badge_esp32s2` release build.
+
 ## Upload
 
 Connect the badge over USB-C, turn it on, and run:
