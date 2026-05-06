@@ -1,5 +1,7 @@
 # Maker Badge 2019 Game - PlatformIO
 
+English README. Czech version: [README.cs.md](README.cs.md).
+
 PlatformIO firmware for running a Maker Faire Prague 2019 style IR badge game
 on the ESP32-S2 Czech Maker Badge.
 
