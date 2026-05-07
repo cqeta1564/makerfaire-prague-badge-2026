@@ -167,7 +167,7 @@ void printHelp() {
   Serial.println(F("  E    list seen ids"));
   Serial.println(F("  F!   format seen storage"));
   Serial.println(F("  P    start pairing"));
-  Serial.println(F("  V    show ids"));
+  Serial.println(F("  V    show paired ids"));
   Serial.println(F("  S    return to idle"));
   Serial.println(F("  Z/Z! deep sleep now"));
 }

@@ -25,7 +25,11 @@ void badgePowerEnterFinalSleep() {
   pinMode(PIN_IR_TX, INPUT);
   pinMode(PIN_IR_RX, INPUT);
   pinMode(PIN_BOOT_BUTTON, INPUT);
-  pinMode(PIN_TOUCH_SHOW, INPUT);
+  pinMode(PIN_TOUCH_PAIR_1, INPUT);
+  pinMode(PIN_TOUCH_PAIR_2, INPUT);
+  pinMode(PIN_TOUCH_UNUSED_3, INPUT);
+  pinMode(PIN_TOUCH_SHOW_1, INPUT);
+  pinMode(PIN_TOUCH_SHOW_2, INPUT);
 
 #if PIN_IR_RX_POWER >= 0
   pinMode(PIN_IR_RX_POWER, OUTPUT);

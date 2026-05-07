@@ -6,7 +6,7 @@ PlatformIO firmware pro běh hry ve stylu Maker Faire Prague 2019 badge na
 ESP32-S2 Czech Maker Badge.
 
 Firmware umí vyměňovat ID mezi badgi přes IR, ukládat potkané badge do NVS,
-zobrazit vlastní ID, tým a potkané badge na e-paper displeji a na RGB LED.
+zobrazit spárovaná ID na e-paper displeji a na RGB LED.
 Po dokončení akce se badge uspává do deep sleepu kvůli šetření baterie.
 V běžném úsporném režimu se probouzí pouze resetem nebo odpojením a připojením
 napájení.
@@ -15,7 +15,7 @@ napájení.
 
 - Párování s jinou badge přes původní IR protokol z roku 2019
 - Ukládání potkaných badge ID do ESP32-S2 Preferences/NVS
-- Zobrazení vlastního ID, týmu a potkaných ID na e-paper displeji
+- Zobrazení uložených spárovaných/potkaných ID na e-paper displeji
 - Použití čtyř onboard NeoPixel LED jako viditelného ID/tým kódu
 - Odpovědi na dump požadavky pro gateway/debug nástroje
 - Serial Monitor příkazy pro nastavení, testování, výpisy a uspání
@@ -52,7 +52,11 @@ Výchozí piny jsou v `include/BadgeConfig.h`:
 | NeoPixel data | GPIO 18 (`PIN_RGB_LED`) |
 | Spínání e-paper napájení | GPIO 16 (`PIN_EPD_POWER`) |
 | BOOT tlačítko | GPIO 0 |
-| Touch tlačítko pro zobrazení | GPIO 1 |
+| Touch 1 pro párování | GPIO 1 (`PIN_TOUCH_PAIR_1`) |
+| Touch 2 pro párování | GPIO 2 (`PIN_TOUCH_PAIR_2`) |
+| Touch 3 bez akce | GPIO 3 (`PIN_TOUCH_UNUSED_3`) |
+| Touch 4 pro zobrazení spárovaných ID | GPIO 4 (`PIN_TOUCH_SHOW_1`) |
+| Touch 5 pro zobrazení spárovaných ID | GPIO 5 (`PIN_TOUCH_SHOW_2`) |
 
 ## Zapojení IR
 
@@ -187,7 +191,7 @@ Příkazy:
 | `E` | Vypsat potkaná ID |
 | `F!` | Formát/vymazání úložiště potkaných badge |
 | `P` | Spustit párování |
-| `V` | Zobrazit vlastní/tým/potkaná ID |
+| `V` | Zobrazit uložená spárovaná ID |
 | `S` | Návrat do idle; release build se potom uspí |
 | `Z` nebo `Z!` | Okamžitě přejít do deep sleepu |
 
@@ -195,9 +199,10 @@ Příkazy:
 
 | Vstup | Akce |
 | --- | --- |
-| BOOT tlačítko na ready obrazovce | Spustit párování |
-| Touch pad na ready obrazovce | Zobrazit vlastní/tým/potkaná ID |
-| BOOT tlačítko během zobrazení | Přepnout do párování |
+| Touch 1 nebo touch 2 na ready obrazovce | Spustit párování |
+| Touch 3 na ready obrazovce | Bez akce |
+| Touch 4 nebo touch 5 na ready obrazovce | Zobrazit uložená spárovaná ID |
+| Touch 1 nebo touch 2 během zobrazení | Přepnout do párování |
 | RESET tlačítko | Probudit z finálního deep sleepu |
 
 ## Typický testovací postup
@@ -206,8 +211,8 @@ Příkazy:
 2. Otevři Serial Monitor na 115200 baud.
 3. Pošli `?` nebo `H` a ověř, že firmware odpovídá.
 4. Pošli `I` a `T` pro kontrolu ID a týmu.
-5. Použij `P` nebo BOOT tlačítko pro spuštění párování.
-6. Použij `V` nebo touch pad pro zobrazení uložených ID.
+5. Použij `P` nebo touch 1/2 pro spuštění párování.
+6. Použij `V` nebo touch 4/5 pro zobrazení uložených spárovaných ID.
 7. Pošli `Z` a ověř finální sleep cestu.
 8. Stiskni RESET a badge znovu probuď.
 

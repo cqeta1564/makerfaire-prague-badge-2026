@@ -15,7 +15,11 @@ constexpr uint8_t PIN_EPD_CS = 41;
 constexpr uint8_t PIN_EPD_POWER = 16;
 
 constexpr uint8_t PIN_BOOT_BUTTON = 0;
-constexpr uint8_t PIN_TOUCH_SHOW = 1;
+constexpr uint8_t PIN_TOUCH_PAIR_1 = 1;
+constexpr uint8_t PIN_TOUCH_PAIR_2 = 2;
+constexpr uint8_t PIN_TOUCH_UNUSED_3 = 3;
+constexpr uint8_t PIN_TOUCH_SHOW_1 = 4;
+constexpr uint8_t PIN_TOUCH_SHOW_2 = 5;
 
 constexpr uint8_t PIN_RGB_LED = 18;
 constexpr uint8_t PIN_NEOPIXEL_PWR = 21;

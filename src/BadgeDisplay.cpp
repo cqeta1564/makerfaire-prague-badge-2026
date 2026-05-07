@@ -51,6 +51,15 @@ const char *teamName(uint8_t team) {
   }
 }
 
+bool touchPinTouched(uint8_t pin) {
+  uint16_t value = touchRead(pin);
+#if TOUCH_ACTIVE_HIGH
+  return value > TOUCH_THRESHOLD;
+#else
+  return value < TOUCH_THRESHOLD;
+#endif
+}
+
 void drawCentered(const String &text, int16_t y, const GFXfont *font) {
   int16_t tbx;
   int16_t tby;
@@ -213,18 +222,18 @@ void drawHome(const String &footer) {
 }
 
 void drawHome() {
-  drawHome("BOOT pair, touch 1 show");
+  drawHome("T1/2 pair, T4/5 show");
 }
 
 bool bootPressed() {
   return digitalRead(PIN_BOOT_BUTTON) == LOW;
 }
 
+bool pairTouched() {
+  return touchPinTouched(PIN_TOUCH_PAIR_1) || touchPinTouched(PIN_TOUCH_PAIR_2);
+}
+
 bool showTouched() {
-  uint16_t value = touchRead(PIN_TOUCH_SHOW);
-#if TOUCH_ACTIVE_HIGH
-  return value > TOUCH_THRESHOLD;
-#else
-  return value < TOUCH_THRESHOLD;
-#endif
+  return touchPinTouched(PIN_TOUCH_SHOW_1) ||
+         touchPinTouched(PIN_TOUCH_SHOW_2);
 }

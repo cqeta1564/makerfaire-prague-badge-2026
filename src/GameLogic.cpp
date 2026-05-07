@@ -178,9 +178,25 @@ void handleConfirmPacket(const IrPacket &packet) {
   logicPairBadgeConfirmed(packet.id1);
 }
 
+bool showNextSeenBadge() {
+  while (logicLastShownId < STORAGE_MAX_ID) {
+    uint16_t id = logicLastShownId++;
+    if (!storageIdSeen(id)) continue;
+
+    showRemaining--;
+    pixelsShowId(id);
+    drawScreen("Paired ID", "showing", id, "touch 1/2 pair");
+    return true;
+  }
+
+  showRemaining = 0;
+  return false;
+}
+
 void serviceShow() {
-  if (bootPressed()) {
-    startPairing();
+  if (pairTouched()) {
+    delay(40);
+    if (pairTouched()) startPairing();
     return;
   }
 
@@ -192,26 +208,7 @@ void serviceShow() {
     return;
   }
 
-  showRemaining--;
-
-  if (showRemaining >= storageSeenCount) {
-    uint16_t id = (showRemaining & 1) || storageMyTeam == STORAGE_TEAM_UNDECIDED ? storageMyId : logicMyTeamId();
-    pixelsShowId(id);
-    drawScreen("My badge", "showing", id, "showing own/team code");
-    return;
-  }
-
-  do {
-    logicLastShownId++;
-    if (logicLastShownId >= STORAGE_MAX_ID) {
-      logicLastShownId = 0;
-      showRemaining = 0;
-      return;
-    }
-  } while (!storageIdSeen(logicLastShownId));
-
-  pixelsShowId(logicLastShownId);
-  drawScreen("Seen badge", "showing", logicLastShownId, "touch waits, BOOT pair");
+  if (!showNextSeenBadge()) returnToIdle("show complete");
 }
 
 void servicePairing() {
@@ -281,11 +278,14 @@ void serviceDump() {
 void startShow() {
   badgeMode = MODE_SHOW;
   modeStartedAt = millis();
-  nextShowAt = millis();
+  nextShowAt = millis() + 1200;
   logicLastShownId = 0;
-  showRemaining = storageSeenCount + 4;
-  pixelsShowId(storageMyId);
-  drawScreen("My badge", "showing", storageMyId, "BOOT switches to pair");
+  showRemaining = storageSeenCount;
+
+  if (showRemaining == 0 || !showNextSeenBadge()) {
+    pixelsOff();
+    drawScreen("No paired", "none saved", 0, "touch 1/2 pair");
+  }
 }
 
 void startPairing() {
@@ -314,9 +314,9 @@ void returnToIdle(const String &footer) {
 
 void gameLoop() {
   if (badgeMode == MODE_IDLE) {
-    if (bootPressed()) {
+    if (pairTouched()) {
       delay(40);
-      if (bootPressed()) startPairing();
+      if (pairTouched()) startPairing();
     } else if (showTouched()) {
       delay(40);
       if (showTouched()) startShow();

@@ -6,7 +6,7 @@ PlatformIO firmware for running a Maker Faire Prague 2019 style IR badge game
 on the ESP32-S2 Czech Maker Badge.
 
 The firmware lets badges exchange IDs over IR, store seen badges in NVS, show
-the badge/team code on the e-paper display and onboard RGB LEDs, and then enter
+paired IDs on the e-paper display and onboard RGB LEDs, and then enter
 deep sleep to save battery. The ESP wakes only by reset or power cycling in the
 normal low-power flow.
 
@@ -14,7 +14,7 @@ normal low-power flow.
 
 - Pairs with another badge over the 2019 IR protocol
 - Saves newly seen badge IDs in ESP32-S2 Preferences/NVS
-- Shows your own ID, team ID, and seen IDs on the e-paper display
+- Shows stored paired/seen IDs on the e-paper display
 - Uses the four onboard NeoPixel LEDs as a visible ID/code indicator
 - Responds to dump requests for gateway/debug tooling
 - Supports Serial Monitor commands for setup, testing, dumping, and sleep
@@ -51,7 +51,11 @@ Default pins are defined in `include/BadgeConfig.h`:
 | NeoPixel data | GPIO 18 (`PIN_RGB_LED`) |
 | E-paper power switch | GPIO 16 (`PIN_EPD_POWER`) |
 | BOOT button | GPIO 0 |
-| Touch show button | GPIO 1 |
+| Touch 1 pairing button | GPIO 1 (`PIN_TOUCH_PAIR_1`) |
+| Touch 2 pairing button | GPIO 2 (`PIN_TOUCH_PAIR_2`) |
+| Touch 3 no action | GPIO 3 (`PIN_TOUCH_UNUSED_3`) |
+| Touch 4 paired-ID show button | GPIO 4 (`PIN_TOUCH_SHOW_1`) |
+| Touch 5 paired-ID show button | GPIO 5 (`PIN_TOUCH_SHOW_2`) |
 
 ## IR Wiring
 
@@ -186,7 +190,7 @@ Commands:
 | `E` | List seen IDs |
 | `F!` | Format/clear seen storage |
 | `P` | Start pairing |
-| `V` | Show own/team/seen IDs |
+| `V` | Show stored paired IDs |
 | `S` | Return to idle; release build then sleeps |
 | `Z` or `Z!` | Deep sleep immediately |
 
@@ -194,9 +198,10 @@ Commands:
 
 | Input | Action |
 | --- | --- |
-| BOOT button on ready screen | Start pairing |
-| Touch pad on ready screen | Show own/team/seen IDs |
-| BOOT button during show | Switch to pairing |
+| Touch 1 or touch 2 on ready screen | Start pairing |
+| Touch 3 on ready screen | No action |
+| Touch 4 or touch 5 on ready screen | Show stored paired IDs |
+| Touch 1 or touch 2 during show | Switch to pairing |
 | RESET button | Wake from final deep sleep |
 
 ## Typical Test Flow
@@ -205,8 +210,8 @@ Commands:
 2. Open Serial Monitor at 115200 baud.
 3. Send `?` or `H` to confirm the firmware is responding.
 4. Send `I` and `T` to check badge identity and team.
-5. Use `P` or the BOOT button to start pairing.
-6. Use `V` or the touch pad to show stored IDs.
+5. Use `P` or touch 1/2 to start pairing.
+6. Use `V` or touch 4/5 to show stored paired IDs.
 7. Send `Z` to verify the final sleep path.
 8. Press RESET to wake the badge again.
 

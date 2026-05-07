@@ -15,4 +15,5 @@ void drawScreen(const String &title, const String &message, uint16_t shownId, co
 void drawHome(const String &footer);
 void drawHome();
 bool bootPressed();
+bool pairTouched();
 bool showTouched();
