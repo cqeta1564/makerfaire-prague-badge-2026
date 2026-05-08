@@ -1,14 +1,11 @@
 #include "BadgeDisplay.h"
 
-#include <Fonts/FreeMono9pt7b.h>
-#include <Fonts/FreeMonoBold12pt7b.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
 #include <GxEPD2_BW.h>
 #include <SPI.h>
 #include <WS2812FX.h>
 
+#include "BadgeBitmaps.h"
 #include "BadgeConfig.h"
-#include "BadgeStorage.h"
 
 #if MAKER_BADGE_REV_A_DISPLAY
 GxEPD2_BW<GxEPD2_213_T5D, GxEPD2_213_T5D::HEIGHT> display(GxEPD2_213_T5D(PIN_EPD_CS, PIN_EPD_DC, PIN_EPD_RST, PIN_EPD_BUSY));
@@ -42,16 +39,11 @@ const Rgb COLOR_DIM_MAGENTA = {35, 0, 35};
 const Rgb COLOR_DIM_YELLOW = {35, 25, 0};
 const Rgb COLOR_DIM_WHITE = {35, 30, 35};
 
-const char *teamName(uint8_t team) {
-  switch (team) {
-    case STORAGE_TEAM_RED: return "red";
-    case STORAGE_TEAM_GREEN: return "green";
-    case STORAGE_TEAM_BLUE: return "blue";
-    default: return "none";
-  }
-}
-
 bool touchPinTouched(uint8_t pin) {
+  if (pin == PIN_UNUSED) {
+    return false;
+  }
+
   uint16_t value = touchRead(pin);
 #if TOUCH_ACTIVE_HIGH
   return value > TOUCH_THRESHOLD;
@@ -60,28 +52,19 @@ bool touchPinTouched(uint8_t pin) {
 #endif
 }
 
-void drawCentered(const String &text, int16_t y, const GFXfont *font) {
-  int16_t tbx;
-  int16_t tby;
-  uint16_t tbw;
-  uint16_t tbh;
+void drawBitmapScreen(const uint8_t *bitmap) {
+  display.setRotation(3);
+  display.setTextColor(GxEPD_BLACK);
+  display.setFullWindow();
 
-  display.setFont(font);
-  display.getTextBounds(text, 0, y, &tbx, &tby, &tbw, &tbh);
-  display.setCursor((display.width() - tbw) / 2 - tbx, y);
-  display.print(text);
-}
+  int16_t x = (display.width() - BADGE_BITMAP_WIDTH) / 2;
+  int16_t y = (display.height() - BADGE_BITMAP_HEIGHT) / 2;
 
-void drawIdBlocks(uint16_t id, int16_t x, int16_t y) {
-  display.setFont(&FreeMonoBold9pt7b);
-  for (uint8_t i = 0; i < 4; i++) {
-    uint8_t code = id & 0b111;
-    int16_t bx = x + i * 38;
-    display.drawRoundRect(bx, y, 30, 24, 3, GxEPD_BLACK);
-    display.setCursor(bx + 10, y + 17);
-    display.print(code);
-    id >>= 3;
-  }
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.drawBitmap(x, y, bitmap, BADGE_BITMAP_WIDTH, BADGE_BITMAP_HEIGHT, GxEPD_BLACK);
+  } while (display.nextPage());
 }
 }
 
@@ -173,52 +156,25 @@ void ledsService() {
   }
 }
 
-void drawScreen(const String &title, const String &message, uint16_t shownId, const String &footer) {
-  display.setRotation(3);
-  display.setTextColor(GxEPD_BLACK);
-  display.setFullWindow();
+void drawWakeupScreen() {
+  drawBitmapScreen(BADGE_BITMAP_WAKEUP);
+}
 
-  bool compact = display.height() < 120;
-  int16_t titleY = compact ? 18 : 24;
-  int16_t infoY = compact ? 38 : 50;
-  int16_t seenY = compact ? 55 : 70;
-  int16_t contentY = compact ? 62 : 80;
-  int16_t messageY = compact ? 80 : 96;
-  int16_t footerY = compact ? 101 : 117;
-  int16_t blocksX = (display.width() - 144) / 2;
-  if (blocksX < 4) blocksX = 4;
+void drawPairingScreen() {
+  drawBitmapScreen(BADGE_BITMAP_PAIRING);
+}
 
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-    drawCentered(title, titleY, &FreeMonoBold12pt7b);
+void drawShowScreen() {
+  drawBitmapScreen(BADGE_BITMAP_SHOW);
+}
 
-    display.setFont(&FreeMono9pt7b);
-    display.setCursor(8, infoY);
-    display.print("ID ");
-    display.print(storageMyId, HEX);
-    display.print("  team ");
-    display.print(teamName(storageMyTeam));
-
-    display.setCursor(8, seenY);
-    display.print("seen ");
-    display.print(storageSeenCount);
-    display.print(" badges");
-
-    if (shownId) {
-      drawIdBlocks(shownId, blocksX, contentY);
-    } else {
-      drawCentered(message, messageY, &FreeMonoBold9pt7b);
-    }
-
-    display.setFont(&FreeMono9pt7b);
-    display.setCursor(8, footerY);
-    display.print(footer);
-  } while (display.nextPage());
+void drawSleepScreen() {
+  drawBitmapScreen(BADGE_BITMAP_SLEEP);
 }
 
 void drawHome(const String &footer) {
-  drawScreen("MF 2019 game", "ready", storageMyId, footer);
+  (void)footer;
+  drawWakeupScreen();
 }
 
 void drawHome() {

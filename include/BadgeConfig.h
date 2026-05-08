@@ -15,6 +15,7 @@ constexpr uint8_t PIN_EPD_CS = 41;
 constexpr uint8_t PIN_EPD_POWER = 16;
 
 constexpr uint8_t PIN_BOOT_BUTTON = 0;
+constexpr uint8_t PIN_UNUSED = 255;
 constexpr uint8_t PIN_TOUCH_PAIR_1 = 1;
 constexpr uint8_t PIN_TOUCH_PAIR_2 = 2;
 constexpr uint8_t PIN_TOUCH_UNUSED_3 = 3;
@@ -26,11 +27,11 @@ constexpr uint8_t PIN_NEOPIXEL_PWR = 21;
 constexpr uint8_t NEOPIXEL_COUNT = 4;
 
 #ifndef PIN_IR_TX
-#define PIN_IR_TX 11
+#define PIN_IR_TX 13
 #endif
 
 #ifndef PIN_IR_RX
-#define PIN_IR_RX 12
+#define PIN_IR_RX 7
 #endif
 
 #ifndef PIN_IR_RX_POWER

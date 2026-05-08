@@ -145,7 +145,7 @@ void handleCommand(String command) {
 
   if (op == 'Z' && (command.length() == 1 || (command.length() == 2 && command[1] == '!'))) {
     Serial.println(F("+Z"));
-    drawScreen("Sleeping", "reset to wake", storageMyId, "serial command");
+    drawSleepScreen();
     badgePowerEnterFinalSleep();
     return;
   }

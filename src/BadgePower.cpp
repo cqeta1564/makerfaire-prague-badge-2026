@@ -12,6 +12,12 @@ namespace {
 void holdPin(gpio_num_t pin) {
   gpio_hold_en(pin);
 }
+
+void releasePin(uint8_t pin) {
+  if (pin != PIN_UNUSED) {
+    pinMode(pin, INPUT);
+  }
+}
 }
 
 void badgePowerEnterFinalSleep() {
@@ -24,12 +30,12 @@ void badgePowerEnterFinalSleep() {
   digitalWrite(PIN_IR_TX, LOW);
   pinMode(PIN_IR_TX, INPUT);
   pinMode(PIN_IR_RX, INPUT);
-  pinMode(PIN_BOOT_BUTTON, INPUT);
-  pinMode(PIN_TOUCH_PAIR_1, INPUT);
-  pinMode(PIN_TOUCH_PAIR_2, INPUT);
-  pinMode(PIN_TOUCH_UNUSED_3, INPUT);
-  pinMode(PIN_TOUCH_SHOW_1, INPUT);
-  pinMode(PIN_TOUCH_SHOW_2, INPUT);
+  releasePin(PIN_BOOT_BUTTON);
+  releasePin(PIN_TOUCH_PAIR_1);
+  releasePin(PIN_TOUCH_PAIR_2);
+  releasePin(PIN_TOUCH_UNUSED_3);
+  releasePin(PIN_TOUCH_SHOW_1);
+  releasePin(PIN_TOUCH_SHOW_2);
 
 #if PIN_IR_RX_POWER >= 0
   pinMode(PIN_IR_RX_POWER, OUTPUT);

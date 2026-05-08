@@ -44,8 +44,8 @@ Default pins are defined in `include/BadgeConfig.h`:
 
 | Function | Default |
 | --- | --- |
-| IR transmit LED | GPIO 11 (`PIN_IR_TX`) |
-| IR receiver OUT | GPIO 12 (`PIN_IR_RX`) |
+| IR transmit LED | GPIO 13 (`PIN_IR_TX`) |
+| IR receiver OUT | GPIO 7 (`PIN_IR_RX`) |
 | IR receiver VCC | switched LED/NeoPixel `V+` rail |
 | LED/NeoPixel power switch | GPIO 21 (`PIN_NEOPIXEL_PWR`) |
 | NeoPixel data | GPIO 18 (`PIN_RGB_LED`) |
@@ -63,9 +63,9 @@ Connect the added IR parts like this:
 
 | IR part | Connect to |
 | --- | --- |
-| IR LED anode | GPIO 11 through a current-limiting resistor |
+| IR LED anode | GPIO 13 through a current-limiting resistor |
 | IR LED cathode | GND |
-| 38 kHz receiver OUT | GPIO 12 |
+| 38 kHz receiver OUT | GPIO 7 |
 | 38 kHz receiver VCC | switched LED/NeoPixel `V+` rail |
 | 38 kHz receiver GND | GND |
 
@@ -219,7 +219,7 @@ Commands:
 
 | Problem | Check |
 | --- | --- |
-| IR receiver never sees packets | Receiver OUT must be on GPIO 12 and powered from switched `V+` |
+| IR receiver never sees packets | Receiver OUT must be on GPIO 7 and powered from switched `V+` |
 | IR receiver works only while LEDs are on | This is expected because the receiver shares the LED power rail |
 | Badge sleeps while debugging | Use `maker_badge_debug` or set `SLEEP_AFTER_ACTION=0` |
 | Badge never sleeps on ready screen | Check `IDLE_SLEEP_TIMEOUT_MS`; `0` disables timeout |

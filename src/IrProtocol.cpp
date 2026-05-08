@@ -1,6 +1,7 @@
 #include "IrProtocol.h"
 
 #include "BadgeConfig.h"
+#include "esp32-hal-ledc.h"
 
 namespace {
 constexpr uint8_t IR_CMD_LEGACY_PRESENCE = 0b001010;
@@ -33,10 +34,14 @@ constexpr uint8_t IR_RECV_CMD_NEW = 1;
 constexpr uint8_t IR_RECV_CMD_OLD = 2;
 
 constexpr uint16_t IR_CARRIER_HZ = 38000;
+constexpr uint8_t IR_TX_LEDC_CHANNEL = 0;
+constexpr uint8_t IR_TX_LEDC_RESOLUTION_BITS = 8;
+constexpr uint32_t IR_TX_LEDC_DUTY = (1UL << IR_TX_LEDC_RESOLUTION_BITS) / 3;
 
 volatile uint32_t irRecvLastTime = 0;
 volatile uint8_t irRecvState = IR_STATE_DISABLED;
 volatile uint8_t irRecvIsrCount = 0;
+bool irTxCarrierReady = false;
 
 uint8_t irRecvIsrData[IR_MSG_LEN];
 uint8_t irRecvCommands[IR_RECV_MAX_CMDS][IR_MSG_LEN + 1];
@@ -207,24 +212,41 @@ void irEncodeOld(uint8_t *raw, uint8_t cmd, uint16_t id1, uint16_t id2) {
   raw[3] = crc8(raw, IR_MSG_OLD_LEN - 1);
 }
 
-void irMark(uint32_t durationUs) {
-  tone(PIN_IR_TX, IR_CARRIER_HZ);
-  delayMicroseconds(durationUs);
-  noTone(PIN_IR_TX);
+void irCarrierSetup() {
+  if (irTxCarrierReady) return;
+
+  pinMode(PIN_IR_TX, OUTPUT);
   digitalWrite(PIN_IR_TX, LOW);
+  ledcSetup(IR_TX_LEDC_CHANNEL, IR_CARRIER_HZ, IR_TX_LEDC_RESOLUTION_BITS);
+  ledcAttachPin(PIN_IR_TX, IR_TX_LEDC_CHANNEL);
+  ledcWrite(IR_TX_LEDC_CHANNEL, 0);
+  irTxCarrierReady = true;
+}
+
+void irCarrierOn() {
+  irCarrierSetup();
+  ledcWrite(IR_TX_LEDC_CHANNEL, IR_TX_LEDC_DUTY);
+}
+
+void irCarrierOff() {
+  if (irTxCarrierReady) ledcWrite(IR_TX_LEDC_CHANNEL, 0);
+}
+
+void irMark(uint32_t durationUs) {
+  irCarrierOn();
+  delayMicroseconds(durationUs);
+  irCarrierOff();
 }
 
 void irSpace(uint32_t durationUs) {
-  noTone(PIN_IR_TX);
-  digitalWrite(PIN_IR_TX, LOW);
+  irCarrierOff();
   delayMicroseconds(durationUs);
 }
 
 void irSendData(const uint8_t *data, uint8_t size, bool newFormat) {
   irRecvEnable(false);
 
-  pinMode(PIN_IR_TX, OUTPUT);
-  digitalWrite(PIN_IR_TX, LOW);
+  irCarrierSetup();
 
   irMark(newFormat ? IR_SLOT_TIME * 8 : IR_SLOT_TIME_OLD * 16);
   irSpace(newFormat ? IR_SLOT_TIME * 4 : IR_SLOT_TIME_OLD * 8);
@@ -240,8 +262,7 @@ void irSendData(const uint8_t *data, uint8_t size, bool newFormat) {
   }
 
   irMark(newFormat ? IR_SLOT_TIME : IR_SLOT_TIME_OLD);
-  noTone(PIN_IR_TX);
-  digitalWrite(PIN_IR_TX, LOW);
+  irCarrierOff();
 
   irRecvEnable(true);
 }

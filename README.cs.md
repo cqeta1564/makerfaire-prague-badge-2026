@@ -45,8 +45,8 @@ Výchozí piny jsou v `include/BadgeConfig.h`:
 
 | Funkce | Výchozí hodnota |
 | --- | --- |
-| IR vysílací LED | GPIO 11 (`PIN_IR_TX`) |
-| IR receiver OUT | GPIO 12 (`PIN_IR_RX`) |
+| IR vysílací LED | GPIO 13 (`PIN_IR_TX`) |
+| IR receiver OUT | GPIO 7 (`PIN_IR_RX`) |
 | IR receiver VCC | spínaná LED/NeoPixel `V+` větev |
 | Spínání LED/NeoPixel napájení | GPIO 21 (`PIN_NEOPIXEL_PWR`) |
 | NeoPixel data | GPIO 18 (`PIN_RGB_LED`) |
@@ -64,9 +64,9 @@ Přidané IR součástky zapoj takto:
 
 | IR součástka | Zapojení |
 | --- | --- |
-| Anoda IR LED | GPIO 11 přes proudový odpor |
+| Anoda IR LED | GPIO 13 přes proudový odpor |
 | Katoda IR LED | GND |
-| 38 kHz receiver OUT | GPIO 12 |
+| 38 kHz receiver OUT | GPIO 7 |
 | 38 kHz receiver VCC | spínaná LED/NeoPixel `V+` větev |
 | 38 kHz receiver GND | GND |
 
@@ -220,7 +220,7 @@ Příkazy:
 
 | Problém | Zkontroluj |
 | --- | --- |
-| IR receiver nikdy nevidí pakety | Receiver OUT musí být na GPIO 12 a napájený ze spínaného `V+` |
+| IR receiver nikdy nevidí pakety | Receiver OUT musí být na GPIO 7 a napájený ze spínaného `V+` |
 | IR receiver funguje jen když svítí LED | To je očekávané, receiver sdílí LED napájecí větev |
 | Badge se uspává při ladění | Použij `maker_badge_debug` nebo nastav `SLEEP_AFTER_ACTION=0` |
 | Badge se na ready obrazovce nikdy neuspí | Zkontroluj `IDLE_SLEEP_TIMEOUT_MS`; `0` timeout vypíná |

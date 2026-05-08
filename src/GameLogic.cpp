@@ -29,7 +29,8 @@ uint8_t logicDumpPage = LOGIC_DUMP_INVALID_PAGE;
 uint8_t logicDumpAttempt = 0;
 
 void enterFinalSleep(const String &footer) {
-  drawScreen("Sleeping", "reset to wake", storageMyId, footer);
+  (void)footer;
+  drawSleepScreen();
   badgePowerEnterFinalSleep();
 }
 
@@ -91,7 +92,8 @@ void logicPairBadgeConfirmed(uint16_t id) {
   pixelsShowId(shownId);
   badgeMode = MODE_CONFIRMED;
   modeStartedAt = millis();
-  drawScreen("Pair done", footer, shownId, "returning to ready");
+  (void)footer;
+  drawShowScreen();
 }
 
 void logicDumpRespond(const IrPacket &packet) {
@@ -109,7 +111,7 @@ void logicDumpRespond(const IrPacket &packet) {
     modeStartedAt = millis();
     nextDumpAt = millis();
     ledsSetAnim(LED_ANIM_DUMP);
-    drawScreen("Dumping", "sending pages", storageMyId, "IR dump requested");
+    drawPairingScreen();
   } else {
     returnToIdle("nothing to dump");
   }
@@ -132,7 +134,8 @@ void handlePairPacket(const IrPacket &packet) {
     logicPairPresenceBadgeId = packet.id1;
     badgeMode = MODE_AWAIT_CONFIRM;
     modeStartedAt = millis();
-    drawScreen("Pairing", "waiting confirm", packet.id1, "do not move badges");
+    // Keep the IR handshake free of full e-paper refreshes; the confirm window
+    // is short and the old 2019 firmware sends its confirm immediately.
     return;
   }
 
@@ -185,7 +188,6 @@ bool showNextSeenBadge() {
 
     showRemaining--;
     pixelsShowId(id);
-    drawScreen("Paired ID", "showing", id, "touch 1/2 pair");
     return true;
   }
 
@@ -281,11 +283,8 @@ void startShow() {
   nextShowAt = millis() + 1200;
   logicLastShownId = 0;
   showRemaining = storageSeenCount;
-
-  if (showRemaining == 0 || !showNextSeenBadge()) {
-    pixelsOff();
-    drawScreen("No paired", "none saved", 0, "touch 1/2 pair");
-  }
+  pixelsShowId(storageMyId);
+  drawShowScreen();
 }
 
 void startPairing() {
@@ -298,7 +297,7 @@ void startPairing() {
 
   irRecvCommandsClear();
   ledsSetAnim(LED_ANIM_PRESENCE);
-  drawScreen("Pairing", "looking for badge", storageMyId, "point badges together");
+  drawPairingScreen();
 }
 
 void returnToIdle(const String &footer) {
