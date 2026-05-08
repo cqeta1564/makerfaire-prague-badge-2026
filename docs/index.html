@@ -183,6 +183,90 @@
         line-height: 1.45;
       }
 
+      .flash-status {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2147483000;
+        display: none;
+        width: min(420px, calc(100% - 32px));
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.98);
+        padding: 14px;
+        box-shadow: 0 18px 40px rgba(25, 25, 25, 0.18);
+      }
+
+      .flash-status[aria-hidden="false"] {
+        display: grid;
+        gap: 10px;
+      }
+
+      .flash-status__top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .flash-status__title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .flash-status__time {
+        color: var(--muted);
+        font-size: 0.88rem;
+        white-space: nowrap;
+      }
+
+      .flash-status__detail {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+
+      .flash-status__bar {
+        position: relative;
+        overflow: hidden;
+        height: 6px;
+        border-radius: 999px;
+        background: #eef0ec;
+      }
+
+      .flash-status__bar::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 36%;
+        border-radius: inherit;
+        background: var(--accent);
+        animation: status-slide 1.2s ease-in-out infinite;
+      }
+
+      .flash-status__log {
+        display: grid;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.35;
+        list-style: none;
+      }
+
+      @keyframes status-slide {
+        0% {
+          transform: translateX(-110%);
+        }
+
+        100% {
+          transform: translateX(320%);
+        }
+      }
+
       a {
         color: var(--accent-dark);
       }
@@ -285,6 +369,20 @@
         </a>
       </footer>
     </main>
+    <aside
+      id="flash-status"
+      class="flash-status"
+      aria-live="polite"
+      aria-hidden="true"
+    >
+      <div class="flash-status__top">
+        <p id="flash-status-title" class="flash-status__title">Preparing</p>
+        <span id="flash-status-time" class="flash-status__time">00:00</span>
+      </div>
+      <p id="flash-status-detail" class="flash-status__detail"></p>
+      <div class="flash-status__bar" aria-hidden="true"></div>
+      <ul id="flash-status-log" class="flash-status__log"></ul>
+    </aside>
     <script>
       const BADGE_MIN = 1111;
       const BADGE_MAX = 7777;
@@ -298,9 +396,18 @@
       const installControl = document.getElementById("install-control");
       const installAction = document.getElementById("install-action");
       const installSummary = document.getElementById("install-summary");
+      const flashStatus = document.getElementById("flash-status");
+      const flashStatusTitle = document.getElementById("flash-status-title");
+      const flashStatusDetail = document.getElementById("flash-status-detail");
+      const flashStatusTime = document.getElementById("flash-status-time");
+      const flashStatusLog = document.getElementById("flash-status-log");
 
       let manifestUrl = "";
       let badgeConfigUrl = "";
+      let installStartedAt = 0;
+      let installTimer = 0;
+      let lastStatusKey = "";
+      const statusLog = [];
 
       function encodeBadgeId(digits) {
         return digits.reduce((id, digit, index) => id | (digit << (index * 3)), 0);
@@ -431,13 +538,174 @@
         return true;
       }
 
+      function formatElapsed(ms) {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+        const seconds = String(totalSeconds % 60).padStart(2, "0");
+        return `${minutes}:${seconds}`;
+      }
+
+      function addStatusLog(message) {
+        const timestamp = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        statusLog.unshift(`${timestamp} - ${message}`);
+        statusLog.splice(4);
+        flashStatusLog.replaceChildren(
+          ...statusLog.map((entry) => {
+            const item = document.createElement("li");
+            item.textContent = entry;
+            return item;
+          }),
+        );
+      }
+
+      function setInstallStatus(title, detail, key = title) {
+        if (key !== lastStatusKey) {
+          addStatusLog(title);
+          lastStatusKey = key;
+        }
+        flashStatusTitle.textContent = title;
+        flashStatusDetail.textContent = detail;
+      }
+
+      function readDialogText(dialog) {
+        return dialog?.shadowRoot?.textContent?.replace(/\s+/g, " ").trim() || "";
+      }
+
+      function statusFromDialog(dialog) {
+        if (!dialog) {
+          return {
+            key: "waiting-dialog",
+            title: "Waiting for installer",
+            detail: "Choose the serial port in the browser dialog. The page is ready.",
+          };
+        }
+
+        const state = dialog.getAttribute("state") || "";
+        const text = readDialogText(dialog);
+
+        if (text.includes("Confirm Installation")) {
+          return {
+            key: "confirm-install",
+            title: "Waiting for confirmation",
+            detail: "ESP Web Tools is ready. Confirm the install in the dialog to start flashing.",
+          };
+        }
+
+        if (text.includes("Erase device")) {
+          return {
+            key: "confirm-erase",
+            title: "Waiting for erase choice",
+            detail: "Choose whether the badge flash should be erased before writing the new firmware.",
+          };
+        }
+
+        if (text.includes("Connecting")) {
+          return {
+            key: "connecting",
+            title: "Connecting to badge",
+            detail: "The browser is opening the serial port and checking the ESP32-S2.",
+          };
+        }
+
+        if (text.includes("Preparing installation")) {
+          return {
+            key: "preparing",
+            title: "Preparing installation",
+            detail: "The browser is loading bootloader, partitions, firmware and badge-number config. This can take a moment before percentages appear.",
+          };
+        }
+
+        if (text.includes("Erasing")) {
+          return {
+            key: "erasing",
+            title: "Erasing flash",
+            detail: "The badge flash is being erased. Keep the USB cable connected.",
+          };
+        }
+
+        const percent = text.match(/(\d{1,3})%/);
+        if (percent || text.includes("Installing")) {
+          return {
+            key: `writing-${percent?.[1] || "starting"}`,
+            title: percent ? `Writing firmware ${percent[1]}%` : "Writing firmware",
+            detail: "Firmware data is being written to the badge. Keep this page visible.",
+          };
+        }
+
+        if (text.includes("Installation complete")) {
+          return {
+            key: "complete",
+            title: "Installation complete",
+            detail: "Firmware was written. The badge will save the selected number during first boot.",
+          };
+        }
+
+        if (state === "ERROR" || text.includes("Error") || text.includes("failed")) {
+          return {
+            key: "error",
+            title: "Installer reported an error",
+            detail: text || "Check the ESP Web Tools dialog for details.",
+          };
+        }
+
+        return {
+          key: state || "installer-active",
+          title: state ? `Installer state: ${state}` : "Installer active",
+          detail: text || "Installer is still active. Keep the badge connected.",
+        };
+      }
+
+      function refreshInstallStatus() {
+        if (!installStartedAt) return;
+
+        const dialog = document.querySelector("ewt-install-dialog");
+        const status = statusFromDialog(dialog);
+        setInstallStatus(status.title, status.detail, status.key);
+        flashStatusTime.textContent = formatElapsed(Date.now() - installStartedAt);
+
+        if (status.key === "complete" || status.key === "error") {
+          clearInterval(installTimer);
+          installTimer = window.setInterval(() => {
+            flashStatusTime.textContent = formatElapsed(Date.now() - installStartedAt);
+          }, 1000);
+        }
+      }
+
+      function startInstallStatus() {
+        installStartedAt = Date.now();
+        lastStatusKey = "";
+        statusLog.splice(0);
+        flashStatus.setAttribute("aria-hidden", "false");
+        setInstallStatus(
+          "Starting installer",
+          "A browser serial dialog should open. Pick the badge port to continue.",
+          "starting",
+        );
+        clearInterval(installTimer);
+        installTimer = window.setInterval(refreshInstallStatus, 1000);
+      }
+
+      const dialogObserver = new MutationObserver(refreshInstallStatus);
+      dialogObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["state"],
+      });
+
       badgeInput.addEventListener("input", updateInstaller);
       installAction.addEventListener("click", (event) => {
         if (!updateInstaller()) {
           event.preventDefault();
           event.stopPropagation();
           badgeInput.reportValidity();
+          return;
         }
+        startInstallStatus();
       });
       window.addEventListener("pagehide", revokeInstallUrls);
 
