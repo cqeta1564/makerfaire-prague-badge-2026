@@ -148,7 +148,9 @@ Release firmware can be installed from the GitHub Pages web flasher:
 
 Use desktop Chrome or Microsoft Edge, connect the badge over USB-C, and turn it
 on. If the serial port does not appear, put the ESP32-S2 into bootloader mode
-and try again. The web flasher uses the `maker_badge_esp32s2` release build.
+and try again. Enter the badge number first; valid numbers are `1111` to
+`7777` and each digit must be `1` to `7`. The web flasher writes that number
+during install and uses the `maker_badge_esp32s2` release build.
 
 ## Upload
 

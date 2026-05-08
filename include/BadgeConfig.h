@@ -63,6 +63,9 @@ constexpr uint8_t STORAGE_MAGIC2 = 42;
 constexpr uint16_t STORAGE_COUNT = 512;
 constexpr uint16_t STORAGE_MAX_ID = 4096;
 constexpr uint16_t STORAGE_WILDCARD_ID = STORAGE_MAX_ID - 1;
+constexpr uint8_t WEB_BADGE_CONFIG_SUBTYPE = 0x40;
+constexpr uint32_t WEB_BADGE_CONFIG_OFFSET = 0x3F0000;
+constexpr uint32_t WEB_BADGE_CONFIG_SIZE = 0x10000;
 
 constexpr uint8_t STORAGE_MAX_TEAM = 4;
 constexpr uint8_t STORAGE_TEAM_UNDECIDED = 0;

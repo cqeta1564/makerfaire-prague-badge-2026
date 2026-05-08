@@ -1,10 +1,13 @@
 #include "BadgeStorage.h"
 
 #include <Preferences.h>
+#include <esp_partition.h>
 #include <esp_system.h>
 
 namespace {
 Preferences prefs;
+constexpr uint8_t WEB_CONFIG_LEN = 12;
+constexpr uint8_t WEB_CONFIG_CHECKSUM_INDEX = WEB_CONFIG_LEN - 1;
 
 uint16_t generateDefaultId() {
   uint64_t mac = ESP.getEfuseMac();
@@ -17,6 +20,74 @@ uint16_t generateDefaultId() {
   }
 
   return id;
+}
+
+uint16_t encodeBadgeDigits(const uint8_t *digits) {
+  uint16_t id = 0;
+  for (uint8_t i = 0; i < 4; i++) {
+    id |= uint16_t(digits[i]) << (i * 3);
+  }
+  return id;
+}
+
+bool readWebConfiguredId(const esp_partition_t *partition, uint16_t &id) {
+  uint8_t data[WEB_CONFIG_LEN];
+  if (esp_partition_read(partition, 0, data, sizeof(data)) != ESP_OK) {
+    return false;
+  }
+
+  if (data[0] != 'M' || data[1] != 'F' || data[2] != 'B' ||
+      data[3] != '6' || data[4] != 1) {
+    return false;
+  }
+
+  uint8_t checksum = 0;
+  for (uint8_t i = 0; i < WEB_CONFIG_CHECKSUM_INDEX; i++) {
+    checksum ^= data[i];
+  }
+  if (checksum != data[WEB_CONFIG_CHECKSUM_INDEX]) {
+    return false;
+  }
+
+  uint8_t digits[4];
+  for (uint8_t i = 0; i < 4; i++) {
+    digits[i] = data[5 + i];
+    if (digits[i] < 1 || digits[i] > 7) {
+      return false;
+    }
+  }
+
+  uint16_t configuredId = uint16_t(data[9]) | (uint16_t(data[10]) << 8);
+  if (configuredId != encodeBadgeDigits(digits) ||
+      !storageIdValid(configuredId)) {
+    return false;
+  }
+
+  id = configuredId;
+  return true;
+}
+
+void applyWebConfiguredId() {
+  const esp_partition_t *partition = esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA,
+      static_cast<esp_partition_subtype_t>(WEB_BADGE_CONFIG_SUBTYPE),
+      "badgecfg");
+  if (!partition) {
+    return;
+  }
+  if (partition->address != WEB_BADGE_CONFIG_OFFSET ||
+      partition->size != WEB_BADGE_CONFIG_SIZE) {
+    return;
+  }
+
+  uint16_t configuredId;
+  if (!readWebConfiguredId(partition, configuredId)) {
+    return;
+  }
+
+  if (storageSetId(configuredId)) {
+    esp_partition_erase_range(partition, 0, partition->size);
+  }
 }
 }
 
@@ -113,6 +184,8 @@ void storageSetup() {
   if (storageMyTeam >= STORAGE_MAX_TEAM) {
     storageSetTeam(STORAGE_TEAM_UNDECIDED);
   }
+
+  applyWebConfiguredId();
 
   uint8_t magic = prefs.getUChar("magic1", 0);
   uint8_t magic2 = prefs.getUChar("magic2", 0);

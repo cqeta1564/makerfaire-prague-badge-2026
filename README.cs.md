@@ -149,7 +149,9 @@ Release firmware jde nahrát přes GitHub Pages web flasher:
 
 Použij desktopový Chrome nebo Microsoft Edge, připoj badge přes USB-C a zapni
 ji. Pokud se sériový port neukáže, uveď ESP32-S2 do bootloader režimu a zkus to
-znovu. Web flasher používá release build `maker_badge_esp32s2`.
+znovu. Nejdřív zadej číslo badge; platné hodnoty jsou `1111` až `7777` a každá
+číslice musí být `1` až `7`. Web flasher číslo zapíše při instalaci a používá
+release build `maker_badge_esp32s2`.
 
 ## Upload
 

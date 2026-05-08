@@ -80,6 +80,56 @@
         margin-top: 28px;
       }
 
+      .badge-form {
+        display: grid;
+        gap: 10px;
+        margin-top: 28px;
+      }
+
+      label {
+        font-weight: 800;
+      }
+
+      .badge-row {
+        display: grid;
+        grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+      }
+
+      input {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 14px;
+        color: var(--ink);
+        background: #ffffff;
+        font: inherit;
+        font-weight: 800;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        outline: 3px solid rgba(228, 49, 43, 0.16);
+      }
+
+      input[aria-invalid="true"] {
+        border-color: var(--accent);
+      }
+
+      .badge-preview,
+      .badge-feedback {
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.45;
+      }
+
+      .badge-feedback {
+        min-height: 1.4em;
+        margin: 0;
+      }
+
       .install-button {
         display: inline-flex;
         align-items: center;
@@ -97,8 +147,19 @@
         box-shadow: 0 10px 20px rgba(228, 49, 43, 0.22);
       }
 
+      .install-button:disabled {
+        background: #b8beb7;
+        color: #ffffff;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
       .install-button:hover {
         background: var(--accent-dark);
+      }
+
+      .install-button:disabled:hover {
+        background: #b8beb7;
       }
 
       .message {
@@ -146,6 +207,10 @@
         .install-button {
           width: 100%;
         }
+
+        .badge-row {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -159,10 +224,32 @@
           Serial. Nahrání funguje přímo z prohlížeče přes USB-C.
         </p>
 
+        <div class="badge-form">
+          <label for="badge-id">Badge number / Číslo Badge</label>
+          <div class="badge-row">
+            <input
+              id="badge-id"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="1234"
+              maxlength="4"
+              pattern="[1-7]{4}"
+              aria-describedby="badge-preview badge-error"
+              aria-invalid="false"
+              required
+            >
+            <span id="badge-preview" class="badge-preview">
+              Allowed range: 1111-7777, digits 1-7 only.
+            </span>
+          </div>
+          <p id="badge-error" class="badge-feedback" aria-live="polite"></p>
+        </div>
+
         <div class="installer">
-          <esp-web-install-button manifest="./manifest.json">
-            <button class="install-button" slot="activate">
-              Install firmware / Nahrát firmware
+          <esp-web-install-button id="install-control">
+            <button id="install-action" class="install-button" slot="activate" disabled>
+              Choose badge number first / Nejdřív zadej číslo
             </button>
             <span class="message" slot="unsupported">
               Open this page in desktop Chrome or Microsoft Edge. Web Serial is
@@ -172,7 +259,7 @@
               Open this page over HTTPS. GitHub Pages is supported.
             </span>
           </esp-web-install-button>
-          <span class="message">
+          <span id="install-summary" class="message">
             The page flashes the PlatformIO release build
             <strong>maker_badge_esp32s2</strong>.
           </span>
@@ -198,5 +285,163 @@
         </a>
       </footer>
     </main>
+    <script>
+      const BADGE_MIN = 1111;
+      const BADGE_MAX = 7777;
+      const BADGE_PATTERN = /^[1-7]{4}$/;
+      const BADGE_CONFIG_OFFSET = 0x3F0000;
+      const BADGE_CONFIG_SIZE = 4096;
+
+      const badgeInput = document.getElementById("badge-id");
+      const badgePreview = document.getElementById("badge-preview");
+      const badgeError = document.getElementById("badge-error");
+      const installControl = document.getElementById("install-control");
+      const installAction = document.getElementById("install-action");
+      const installSummary = document.getElementById("install-summary");
+
+      let manifestUrl = "";
+      let badgeConfigUrl = "";
+
+      function encodeBadgeId(digits) {
+        return digits.reduce((id, digit, index) => id | (digit << (index * 3)), 0);
+      }
+
+      function parseBadgeNumber(value) {
+        const text = value.trim();
+
+        if (!text) {
+          return { ok: false, message: "Enter badge number / Zadej číslo badge." };
+        }
+
+        if (!/^\d+$/.test(text)) {
+          return { ok: false, message: "Use digits only / Použij jen číslice." };
+        }
+
+        const number = Number(text);
+        if (number < BADGE_MIN || number > BADGE_MAX) {
+          return { ok: false, message: "Badge number must be 1111-7777." };
+        }
+
+        if (!BADGE_PATTERN.test(text)) {
+          return { ok: false, message: "Each digit must be 1-7 / Každá číslice musí být 1-7." };
+        }
+
+        const digits = [...text].map((digit) => Number(digit));
+        return {
+          ok: true,
+          text,
+          digits,
+          packedId: encodeBadgeId(digits),
+        };
+      }
+
+      function revokeInstallUrls() {
+        if (manifestUrl) URL.revokeObjectURL(manifestUrl);
+        if (badgeConfigUrl) URL.revokeObjectURL(badgeConfigUrl);
+        manifestUrl = "";
+        badgeConfigUrl = "";
+      }
+
+      function createBadgeConfigBlob(parsedBadge) {
+        const image = new Uint8Array(BADGE_CONFIG_SIZE);
+        image.fill(0xff);
+
+        image[0] = 0x4d; // M
+        image[1] = 0x46; // F
+        image[2] = 0x42; // B
+        image[3] = 0x36; // 6
+        image[4] = 1;
+        parsedBadge.digits.forEach((digit, index) => {
+          image[5 + index] = digit;
+        });
+        image[9] = parsedBadge.packedId & 0xff;
+        image[10] = (parsedBadge.packedId >> 8) & 0xff;
+
+        let checksum = 0;
+        for (let index = 0; index < 11; index++) {
+          checksum ^= image[index];
+        }
+        image[11] = checksum;
+
+        return new Blob([image], { type: "application/octet-stream" });
+      }
+
+      function firmwareUrl(path) {
+        return new URL(path, window.location.href).toString();
+      }
+
+      function buildManifest(parsedBadge) {
+        badgeConfigUrl = URL.createObjectURL(createBadgeConfigBlob(parsedBadge));
+
+        return {
+          name: "Maker Faire Prague Badge 2026",
+          version: `maker_badge_esp32s2 badge ${parsedBadge.text}`,
+          new_install_prompt_erase: true,
+          new_install_improv_wait_time: 0,
+          builds: [
+            {
+              chipFamily: "ESP32-S2",
+              parts: [
+                { path: firmwareUrl("firmware/bootloader.bin"), offset: 4096 },
+                { path: firmwareUrl("firmware/partitions.bin"), offset: 32768 },
+                { path: firmwareUrl("firmware/boot_app0.bin"), offset: 57344 },
+                { path: firmwareUrl("firmware/firmware.bin"), offset: 65536 },
+                { path: badgeConfigUrl, offset: BADGE_CONFIG_OFFSET },
+              ],
+            },
+          ],
+        };
+      }
+
+      function updateInstaller() {
+        const parsedBadge = parseBadgeNumber(badgeInput.value);
+
+        revokeInstallUrls();
+
+        if (!parsedBadge.ok) {
+          const hasInput = badgeInput.value.trim().length > 0;
+          badgeInput.setCustomValidity(parsedBadge.message);
+          badgeInput.setAttribute("aria-invalid", hasInput ? "true" : "false");
+          badgeError.textContent = hasInput ? parsedBadge.message : "";
+          badgePreview.textContent = "Allowed range: 1111-7777, digits 1-7 only.";
+          installAction.disabled = true;
+          installAction.textContent = "Choose badge number first / Nejdřív zadej číslo";
+          installSummary.innerHTML =
+            "The page flashes the PlatformIO release build <strong>maker_badge_esp32s2</strong>.";
+          installControl.manifest = "";
+          installControl.removeAttribute("manifest");
+          return false;
+        }
+
+        const manifest = buildManifest(parsedBadge);
+        manifestUrl = URL.createObjectURL(
+          new Blob([JSON.stringify(manifest)], { type: "application/json" }),
+        );
+
+        badgeInput.setCustomValidity("");
+        badgeInput.setAttribute("aria-invalid", "false");
+        badgeError.textContent = "";
+        badgePreview.textContent = `Badge ${parsedBadge.text} ready.`;
+        installAction.disabled = false;
+        installAction.textContent = `Install firmware for badge ${parsedBadge.text}`;
+        installSummary.innerHTML =
+          `Firmware will save badge number <strong>${parsedBadge.text}</strong> during first boot.`;
+        installControl.manifest = manifestUrl;
+        installControl.setAttribute("manifest", manifestUrl);
+        return true;
+      }
+
+      badgeInput.addEventListener("input", updateInstaller);
+      installAction.addEventListener("click", (event) => {
+        if (!updateInstaller()) {
+          event.preventDefault();
+          event.stopPropagation();
+          badgeInput.reportValidity();
+        }
+      });
+      window.addEventListener("pagehide", revokeInstallUrls);
+
+      updateInstaller();
+    </script>
   </body>
 </html>
